@@ -1,0 +1,19 @@
+Metadata-Version: 2.4
+Name: asp
+Version: 0.1.0
+Summary: Add your description here
+Requires-Python: >=3.13
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: beautifulsoup4>=4.13.4
+Requires-Dist: crawl4ai>=0.6.3
+Requires-Dist: fastapi>=0.115.12
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: langchain-text-splitters>=0.3.8
+Requires-Dist: logfire>=3.16.0
+Requires-Dist: pydantic>=2.11.5
+Requires-Dist: pydantic-ai>=0.2.8
+Requires-Dist: python-dotenv>=1.1.0
+Requires-Dist: setuptools>=80.9.0
+Requires-Dist: supabase>=2.15.2
+Dynamic: license-file

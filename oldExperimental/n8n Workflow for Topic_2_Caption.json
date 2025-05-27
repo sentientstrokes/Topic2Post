@@ -1,0 +1,663 @@
+{
+  "name": "Topic 2 Caption alt Strat",
+  "nodes": [
+    {
+      "parameters": {
+        "fieldToSplitOut": "urls",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        260,
+        20
+      ],
+      "id": "fc7c590f-2478-49de-b040-cce8edc2c80d",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "content": "## Topic to URL",
+        "height": 220,
+        "width": 500
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -100,
+        -40
+      ],
+      "id": "b6db5d38-5685-46fe-aeb2-376779cd8b6c",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractUrls($) {\n    try {\n        const htmlContent = $input.all()[0].json.data;\n        \n        if (!htmlContent) {\n            throw new Error('No HTML content received');\n        }\n\n        // Define patterns to match Google search result URLs\n        const patterns = [\n            /href=\"(https?:\\/\\/[^\"]+)\"/g,\n            /class=\"yuRUbf\"[^>]*>.*?href=\"([^\"]+)\"/gs\n        ];\n        \n        const urlScores = new Map(); // Store URLs with their relevance scores\n        \n        // Keywords to check for relevance\n        const relevanceKeywords = ['perfume', 'daily', 'use', 'blog', 'article'];\n        \n        // Domains/patterns to exclude\n        const excludePatterns = [\n            'google.', 'gstatic.', 'youtube.com', 'pinterest.com',\n            'accounts.', 'support.', '/search?', 'webcache.',\n            'translate.', 'maps.', '.gov', 'policies.'\n        ];\n        \n        for (const pattern of patterns) {\n            let match;\n            while ((match = pattern.exec(htmlContent)) !== null) {\n                let url = match[1];\n                \n                // Clean the URL\n                if (url.startsWith('/url?q=')) {\n                    url = url.split('/url?q=')[1].split('&')[0];\n                }\n                url = url.split('&amp;')[0].split('&ved=')[0].split('&sa=')[0];\n                \n                try {\n                    url = decodeURIComponent(url);\n                    const lowerUrl = url.toLowerCase();\n                    \n                    // Check if URL is valid and not in exclude list\n                    if (url.startsWith('http') && \n                        !excludePatterns.some(pattern => lowerUrl.includes(pattern))) {\n                        \n                        // Calculate relevance score\n                        let score = 0;\n                        relevanceKeywords.forEach(keyword => {\n                            if (lowerUrl.includes(keyword)) score += 1;\n                        });\n                        \n                        // Must have at least one relevance keyword\n                        if (score > 0) {\n                            // Bonus points for having blog/article in URL\n                            if (lowerUrl.includes('/blog') || lowerUrl.includes('/article')) {\n                                score += 2;\n                            }\n                            urlScores.set(url, score);\n                        }\n                    }\n                } catch (e) {\n                    continue;\n                }\n            }\n        }\n\n        // Sort URLs by relevance score\n        const sortedUrls = Array.from(urlScores.entries())\n            .sort((a, b) => b[1] - a[1])\n            .map(([url]) => url);\n        \n        return {\n            json: {\n                success: sortedUrls.length > 0,\n                total_urls: sortedUrls.length,\n                urls: sortedUrls,\n                debug: {\n                    contentLength: htmlContent.length,\n                    urlsFound: sortedUrls.length,\n                    containsMainKeywords: {\n                        perfume: htmlContent.toLowerCase().includes('perfume'),\n                        blog: htmlContent.toLowerCase().includes('/blog')\n                    }\n                },\n                timestamp: new Date().toISOString()\n            }\n        };\n        \n    } catch (error) {\n        return {\n            json: {\n                success: false,\n                error: error.message,\n                timestamp: new Date().toISOString()\n            }\n        };\n    }\n}\n\nreturn extractUrls($);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        120,
+        20
+      ],
+      "id": "7b48adb6-abb8-4cc7-b6d1-6d556f668e75",
+      "name": "Google URL Scrape"
+    },
+    {
+      "parameters": {
+        "url": "https://www.google.com/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "=(inurl:blog OR inurl:article OR inurl:post) {{ $json.Topics }} -forum -pinterest -youtube"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "en-US,en;q=0.5"
+            },
+            {
+              "name": "Accept-Encoding",
+              "value": "gzip, deflate, br"
+            },
+            {
+              "name": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "name": "Upgrade-Insecure-Requests",
+              "value": "1"
+            },
+            {
+              "name": "Cache-Control",
+              "value": "no-cache"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -40,
+        20
+      ],
+      "id": "2223e6f1-669d-446d-b1a2-d1fdb3702306",
+      "name": "Topic-2-Google"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        560,
+        80
+      ],
+      "id": "fedabeb2-49e2-4712-a3d0-160a21f17d27",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-webpage-content-extractor.WebpageContentExtractor",
+      "typeVersion": 1,
+      "position": [
+        1060,
+        220
+      ],
+      "id": "6b3922e1-80fd-4e99-8cd3-9d831867b077",
+      "name": "WebpageContentExtractor",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "Test-Article to Social",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "Processed",
+              "keyValue": "false"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -500,
+        20
+      ],
+      "name": "Fetch Unprocessed",
+      "id": "9164000c-7d72-4b17-90e8-c8a116c1c6d4",
+      "executeOnce": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "swLaSfjzd9z5ifvs",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -760,
+        20
+      ],
+      "id": "362543cf-3beb-4ccf-9096-c4090b56f98b",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "Test-Article to Social",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Filter (lowest_id)').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "Processed",
+              "fieldValue": "true"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        680,
+        -320
+      ],
+      "id": "405b7990-92a2-420f-8161-676e52160b13",
+      "name": "Update as processed",
+      "credentials": {
+        "supabaseApi": {
+          "id": "swLaSfjzd9z5ifvs",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Fetch Topic from Supabase",
+        "height": 220,
+        "width": 400
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -540,
+        -40
+      ],
+      "id": "15c1f611-25fc-477c-8996-e03d693ef845",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "model": "meta-llama/llama-3.3-70b-instruct",
+        "options": {
+          "baseURL": "https://openrouter.ai/api/v1",
+          "temperature": 0.3
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        1420,
+        -60
+      ],
+      "id": "3fa66d08-f05e-4c1e-8b42-49de4891cd90",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "MRtabEHdr0jeunPj",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Split Out').item.json.urls }}",
+        "options": {
+          "browserWSEndpoint": "ws://192.168.1.10:3000?token=6R0W53R135510"
+        }
+      },
+      "type": "n8n-nodes-puppeteer.puppeteer",
+      "typeVersion": 1,
+      "position": [
+        820,
+        220
+      ],
+      "id": "e00e4056-575d-4b96-ba92-70554c453180",
+      "name": "Puppeteer",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Initialize content and validation object\nlet content = \"NA\"; // Default value if no input comes\nconst validation = {\n    isValid: false, // Default to false if there's no input\n    reasons: [],\n};\n\n// Check if the previous node provided input\nif (items[0] && items[0].json && items[0].json.textContent) {\n    // If input exists, get the content\n    content = items[0].json.textContent;\n\n    // 1. Check content length\n    if (!content || content.length < 500) { // Adjust minimum length as needed\n        validation.isValid = false;\n        validation.reasons.push(\"Content too short\");\n    }\n\n    // 2. Check for encryption/garbage indicators\n    const suspiciousPatterns = [\n        /[\\u0080-\\uffff]{20,}/, // Long sequences of non-ASCII characters\n        /[A-Za-z0-9+/=]{50,}/,  // Potential Base64\n        /(%[0-9A-F]{2}){20,}/i  // URL encoded sequences\n    ];\n\n    suspiciousPatterns.forEach(pattern => {\n        if (pattern.test(content)) {\n            validation.isValid = false;\n            validation.reasons.push(\"Contains suspicious patterns\");\n        }\n    });\n\n    // 3. Check for meaningful text structure\n    const sentences = content.split(/[.!?]+/).filter(Boolean);\n    if (sentences.length < 3) {\n        validation.isValid = false;\n        validation.reasons.push(\"Too few sentences\");\n    }\n\n    // 4. Check text-to-symbol ratio\n    const textOnly = content.replace(/[^a-zA-Z\\s]/g, ''); // Remove non-alphabetic characters\n    const symbolRatio = textOnly.length / content.length;\n    if (symbolRatio < 0.7) { // Adjust threshold as needed\n        validation.isValid = false;\n        validation.reasons.push(\"Too many symbols compared to text\");\n    }\n\n    // If no reasons were added, mark validation as valid\n    if (validation.reasons.length === 0) {\n        validation.isValid = true;\n    }\n} else {\n    // No input: set content to \"NA\" and add a reason\n    validation.reasons.push(\"No input received from the previous node\");\n}\n\n// Attach the validation results to the first item or create a new item\nif (items[0]) {\n    items[0].json.validation = validation;\n    items[0].json.textContent = content; // Ensure content is set\n} else {\n    // If no input, create a new item with the validation\n    items.push({\n        json: {\n            textContent: content,\n            validation: validation\n        }\n    });\n}\n\n// Return the updated items array\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        220
+      ],
+      "id": "8f6ed250-1be5-45ec-9dee-5b9477e778d5",
+      "name": "Validator Processor",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ff9ff264-1041-4f61-8ec3-2ddf4070132d",
+              "leftValue": "={{ $json.textContent }}",
+              "rightValue": "NA",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        860,
+        -220
+      ],
+      "id": "58c00310-ac32-4698-913e-425b3dff243e",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "maxItems": 3
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        1060,
+        -220
+      ],
+      "id": "b8ec821f-13f5-4083-93a8-019b927355ba",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "textContent"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1240,
+        -220
+      ],
+      "id": "4b18c3b3-c395-41e7-963e-fdc98c8d6218",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "chunkOverlap": 100,
+        "options": {
+          "splitCode": "html"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        -60
+      ],
+      "id": "0c105ffc-2f54-4c3a-8a5a-dc097721fdef",
+      "name": "Recursive Character Text Splitter"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "Test-Article to Social",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Filter (lowest_id)').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "Summary",
+              "fieldValue": "={{ $('Summarization Chain').first().json.response.text}}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1700,
+        -220
+      ],
+      "id": "0264db34-17fa-45f7-9ed2-0c5a55ba372d",
+      "name": "Summary to Supabase",
+      "credentials": {
+        "supabaseApi": {
+          "id": "swLaSfjzd9z5ifvs",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chunkingMode": "advanced",
+        "options": {
+          "summarizationMethodAndPrompts": {
+            "values": {
+              "combineMapPrompt": "=Analyze and summarize the key points from this text while ignoring formatting artifacts like newlines and emojis. Maintain the summary according to the topic \"{{ $('Filter (lowest_id)').item.json.Topics }}\":\n\n\"{text}\"",
+              "prompt": "Synthesize these summaries into a single comprehensive brief that captures the key themes and insights from all articles.\n\n\"{text}\""
+            }
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainSummarization",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        -220
+      ],
+      "id": "1f84b85d-f73b-4b58-9537-0be5d3e45932",
+      "name": "Summarization Chain"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Function node code\nconst rawContent = items[0].json.textContent; // Assuming the raw content is in 'content' field\n\n// Function to clean and format the content\nfunction cleanContent(content) {\n    // 1. Remove all escape characters like '\\n', '\\t', etc.\n    let formattedContent = content.replace(/\\\\n|\\\\t/g, '');\n\n    // 2. Replace multiple spaces with a single space\n    formattedContent = formattedContent.replace(/\\s{2,}/g, ' ');\n\n    // 3. Trim leading and trailing spaces\n    formattedContent = formattedContent.trim();\n\n    return formattedContent;\n}\n\n// Clean the raw content\nconst cleanedContent = cleanContent(rawContent);\n\n// Add the cleaned content to the output\nitems[0].json.textContent = cleanedContent;\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1460,
+        220
+      ],
+      "id": "0954da94-9a86-4249-a9e9-e73dffe5ea49",
+      "name": "Text Filter"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Find lowest ID\nconst lowestId = Math.min(...items.map(item => item.json.id));\n\n// Filter for lowest ID record\nconst result = items.find(item => item.json.id === lowestId);\n\nreturn [result];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        20
+      ],
+      "id": "51f0ebd7-87ef-48d4-8622-2fb559cb6da4",
+      "name": "Filter (lowest_id)"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google URL Scrape": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Topic-2-Google": {
+      "main": [
+        [
+          {
+            "node": "Google URL Scrape",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Update as processed",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Puppeteer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Unprocessed": {
+      "main": [
+        [
+          {
+            "node": "Filter (lowest_id)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Fetch Unprocessed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update as processed": {
+      "main": [
+        []
+      ]
+    },
+    "WebpageContentExtractor": {
+      "main": [
+        [
+          {
+            "node": "Validator Processor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Summarization Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Puppeteer": {
+      "main": [
+        [
+          {
+            "node": "WebpageContentExtractor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Validator Processor": {
+      "main": [
+        [
+          {
+            "node": "Text Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Summarization Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Summarization Chain",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarization Chain": {
+      "main": [
+        [
+          {
+            "node": "Summary to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Filter": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter (lowest_id)": {
+      "main": [
+        [
+          {
+            "node": "Topic-2-Google",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "e2003606-73f6-4649-9fec-b9dbb7a9c95f",
+  "meta": {
+    "instanceId": "8d1336e2345e353c303482f0502a9a4c3f6c43ac1614eb3fd572ddb4d1aaae4f"
+  },
+  "id": "w2sCF4368RbzpnN0",
+  "tags": []
+}

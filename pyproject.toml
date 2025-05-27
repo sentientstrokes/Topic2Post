@@ -1,0 +1,29 @@
+[project]
+name = "asp"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "beautifulsoup4>=4.13.4",
+    "crawl4ai>=0.6.3",
+    "fastapi>=0.115.12",
+    "httpx>=0.28.1",
+    "langchain-text-splitters>=0.3.8",
+    "logfire>=3.16.0",
+    "pydantic>=2.11.5",
+    "pydantic-ai>=0.2.8",
+    "python-dotenv>=1.1.0",
+    "setuptools>=80.9.0",
+    "supabase>=2.15.2",
+]
+
+[project.scripts]
+asp = "src.main:main" # Define the entry point using the new module name
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"] # Tell setuptools to look for packages in the 'src' directory
