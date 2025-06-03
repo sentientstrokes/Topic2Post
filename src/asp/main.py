@@ -4,45 +4,49 @@ from dotenv import load_dotenv
 import os
 
 # Import modules
-from src.db.supabase_client import SupabaseClient
-from src.search.google_search import perform_search, extract_urls_from_html
-from src.scraper.retrieve_articles import fetch_valid_articles
-from src.nlp.splitter import split_text
-from src.agents.summarizer import SummarizationAgent
-from src.pipeline.exporter import export_article_to_txt, export_summary_to_txt
+from asp.db.supabase_client import SupabaseClient
+from asp.search.google_search import perform_brave_search, score_and_rank_urls # Updated import for Brave Search
+from asp.scraper.retrieve_articles import fetch_valid_articles
+from asp.nlp.splitter import split_text
+from asp.agents.summarizer import summarize_chunks_langchain # Import the new langchain summarization function
+from asp.pipeline.exporter import export_article_to_txt, export_summary_to_txt
 
 load_dotenv()
+
+# Configure Logfire - more advanced configuration can be moved to logfire_config.py
+logfire.configure()
 
 async def main():
     """
     Main function to run the article extraction and summarization pipeline.
     """
-    logfire.info("Starting the article extraction and summarization pipeline.")
+    logfire.info("Starting the article extraction and summarization pipeline.", ignore_no_config=True)
 
     # 1. Fetch unprocessed topics from Supabase
     supabase_client = SupabaseClient()
     topics = supabase_client.fetch_unprocessed_topics(limit=1) # Fetch one topic for now
-    
+
     if not topics:
         logfire.info("No unprocessed topics found. Exiting.")
         return
 
     for topic_data in topics:
         topic_id = topic_data.get('id')
-        topic_name = topic_data.get('topic_name')
-        
+        topic_name = topic_data.get('Topics') # Use the correct key 'Topics'
+
         if not topic_id or not topic_name:
-            logfire.error("Skipping invalid topic data: {data}", data=topic_data)
+            logfire.error("Skipping invalid topic data (missing id or Topics): {data}", data=topic_data)
             continue
 
-        logfire.info("Processing topic: {topic_name}", topic_name=topic_name, topic_id=topic_id)
+        logfire.info("Processing topic: {topic_name}", topic_name=topic_name, topic_id=topic_id) # Use the correct variable name
 
         try:
-            # 2. Search the web for relevant articles
-            search_html = await perform_search(topic_name)
+            # 2. Search the web for relevant articles and extract structured data
+            # 2. Search the web for relevant articles using Brave Search API
+            search_results_data = await perform_brave_search(topic_name)
 
-            # 3. Extract and rank URLs
-            article_urls = extract_urls_from_html(search_html)
+            # 3. Score and rank URLs from the extracted data
+            article_urls = score_and_rank_urls(search_results_data)
 
             # 4. Retrieve and clean the top 3 articles
             valid_articles = await fetch_valid_articles(article_urls, max_count=3)
@@ -57,13 +61,12 @@ async def main():
             for article in valid_articles:
                 export_article_to_txt(article, topic_name)
 
-            # 6. Summarize them via an LLM
-            summarizer_agent = SummarizationAgent()
+            # 6. Summarize them via an LLM using Langchain
             full_summary = ""
             for article in valid_articles:
-                logfire.info("Summarizing article: {article_url}", article_url=article.url)
+                logfire.info("Summarizing article: {article_url} using Langchain", article_url=article.url)
                 chunks = split_text(article.content)
-                article_summary = await summarizer_agent.summarize_chunks(chunks)
+                article_summary = await summarize_chunks_langchain(chunks) # Call the new langchain summarization function
                 full_summary += f"Summary for {article.title} ({article.url}):\n{article_summary}\n\n"
 
             # 7. Export summaries
@@ -85,4 +88,11 @@ async def main():
     logfire.info("Article extraction and summarization pipeline finished.")
 
 if __name__ == "__main__":
+    asyncio.run(main())
+
+def run():
+    """
+    Synchronous entry point for the pipeline.
+    Runs the main asynchronous function using asyncio.run().
+    """
     asyncio.run(main())

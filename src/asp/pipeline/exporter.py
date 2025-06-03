@@ -1,7 +1,7 @@
 import logfire
 import os
 import re
-from src.scraper.retrieve_articles import Article
+from asp.scraper.retrieve_articles import Article
 
 def export_article_to_txt(article: Article, topic: str) -> str:
     """

@@ -107,6 +107,11 @@
   - [x] Top 3 examples with scores
   - [x] Log if fewer than 3 valid URLs found
 
+- [x] Add `httpx` to project dependencies in `pyproject.toml`.
+- [ ] Implement `perform_brave_search` function in `src/asp/search/google_search.py` to call the Brave Search API directly using `httpx`.
+- [x] Update `score_and_rank_urls` to process results from the Brave Search API.
+- [x] Update `src/asp/main.py` to use the new Brave Search functions.
+
 ### 4. Article Retrieval Loop
 
 - [x] Create article fetch loop controller
@@ -183,8 +188,11 @@
 
 - [x] Export summary to `<topic>_summed.txt`
   - [x] Write final summary block to file
-  - [x] Log export success and filepath
+  - [x] Log export success and filepath.
 
+- [x] Update dependencies in `pyproject.toml` (add `langchain`, `langchain-openai`, remove `pydantic-ai`).
+- [x] Implement summarization in `src/asp/agents/summarizer.py` using `langchain` (configure LLM for OpenRouter, create summarization chain).
+- [x] Update `src/asp/main.py` to use the new `langchain`-based summarization function.
 
 ### 8. Final Update
 
